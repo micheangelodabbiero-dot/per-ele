@@ -579,7 +579,22 @@
 
 </div>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAm_wN8NV8fg30u-PloIwieKEwB0aGYxiM",
+  authDomain: "per-ele-c1178.firebaseapp.com",
+  databaseURL: "https://per-ele-c1178-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "per-ele-c1178",
+  storageBucket: "per-ele-c1178.firebasestorage.app",
+  messagingSenderId: "757003222388",
+  appId: "1:757003222388:web:ddbb2644d30c600f2f4021"
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getDatabase(fbApp);
+
 (function(){
   const COLORS = ['#F7ECE4','#F2984B','#E8A0A0','#8FB39E','#7B9BC7'];
   let myRole = null;      // 'a' or 'b'
@@ -592,14 +607,33 @@
 
   const $ = (id) => document.getElementById(id);
 
+  // shared=true  -> synced between both phones, via Firebase Realtime Database
+  // shared=false -> only on this device, via localStorage
+  function firebaseKey(key){
+    return 'couple/' + key.replace(/:/g, '/');
+  }
   async function safeGet(key, shared){
+    if(!shared){
+      try{ return localStorage.getItem(key); }catch(e){ return null; }
+    }
     try{
-      const r = await window.storage.get(key, shared);
-      return r ? r.value : null;
-    }catch(e){ return null; }
+      const snap = await get(ref(db, firebaseKey(key)));
+      return snap.exists() ? snap.val() : null;
+    }catch(e){ console.error('firebase get failed', e); return null; }
   }
   async function safeSet(key, value, shared){
-    try{ await window.storage.set(key, value, shared); }catch(e){ console.error('storage set failed', e); }
+    if(!shared){
+      try{ localStorage.setItem(key, value); }catch(e){}
+      return;
+    }
+    try{ await set(ref(db, firebaseKey(key)), value); }catch(e){ console.error('firebase set failed', e); }
+  }
+  async function safeDelete(key, shared){
+    if(!shared){
+      try{ localStorage.removeItem(key); }catch(e){}
+      return;
+    }
+    try{ await remove(ref(db, firebaseKey(key))); }catch(e){ console.error('firebase delete failed', e); }
   }
 
   // ---------- Boot ----------
@@ -868,7 +902,7 @@
       'Cambia il mio ruolo su questo telefono',
       'Tocca di nuovo per confermare',
       async () => {
-        try{ await window.storage.delete('couple:myrole', false); }catch(e){}
+        await safeDelete('couple:myrole', false);
         location.reload();
       }
     );
@@ -885,9 +919,9 @@
           ['couple:touch:b', true],
         ];
         for(const [k, shared] of keys){
-          try{ await window.storage.delete(k, shared); }catch(e){}
+          await safeDelete(k, shared);
         }
-        try{ await window.storage.delete('couple:myrole', false); }catch(e){}
+        await safeDelete('couple:myrole', false);
         location.reload();
       }
     );
