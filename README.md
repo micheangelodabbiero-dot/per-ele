@@ -1,2 +1,2 @@
 # per-ele
-nel caso facessi più cpse per ele
+nel caso facessi più cose per ele
