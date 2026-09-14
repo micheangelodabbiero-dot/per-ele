@@ -592,12 +592,12 @@
   <!-- SETUP: create couple profile -->
   <div id="setup-screen">
     <div class="setup-title">Prima di tutto</div>
-    <p class="setup-sub">Questa app è solo vostra. Inserite i vostri nomi e da quando state insieme — dovete farlo una volta sola, poi si sincronizza da sola.</p>
+    <p class="setup-sub">Questa app è solo vostra. Indicate i vostri nomi e da quando state insieme — vi basta farlo una volta, poi resterà sincronizzata da sé.</p>
     <label class="field-label">Nome 1</label>
     <input type="text" id="setup-name-a" placeholder="es. Marco">
     <label class="field-label">Nome 2</label>
     <input type="text" id="setup-name-b" placeholder="es. Giulia">
-    <label class="field-label">Insieme da quando</label>
+    <label class="field-label">Insieme dal</label>
     <input type="date" id="setup-date">
     <button class="btn-primary" id="setup-save">Continua</button>
   </div>
@@ -616,7 +616,7 @@
   <header id="main-header" style="display:none">
     <div class="header-row">
       <div>
-        <p class="eyebrow" id="header-sub">insieme da</p>
+        <p class="eyebrow" id="header-sub">la vostra app</p>
         <h1 id="header-title">noi due</h1>
       </div>
       <button id="menu-btn" aria-label="Menu">
@@ -939,7 +939,7 @@ const db = getDatabase(fbApp);
       void $('heart-btn').offsetWidth;
       $('heart-btn').classList.add('pulse');
       if(navigator.vibrate) navigator.vibrate(40);
-      $('touch-status').innerHTML = 'Le hai fatto sapere che ci pensi <b>proprio ora</b>';
+      $('touch-status').innerHTML = 'Il tuo pensiero è appena arrivato a ' + partnerName() + ', <b>proprio ora</b>';
     });
   }
 
@@ -992,7 +992,7 @@ const db = getDatabase(fbApp);
       const progress = Math.min(1, (days - prev) / (next - prev));
       ring.style.strokeDashoffset = circumference * (1 - progress);
       const box = $('milestone-box');
-      box.innerHTML = 'Mancano <b>' + (next - days) + ' giorni</b> a quota ' + next + '.';
+      box.innerHTML = 'Mancano <b>' + (next - days) + ' giorni</b> al traguardo dei ' + next + '.';
     } else {
       ring.style.strokeDashoffset = 0;
       $('milestone-box').style.display = 'none';
