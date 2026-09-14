@@ -604,7 +604,7 @@
 
   <!-- WHOAMI: pick which of the two you are, on this device -->
   <div id="whoami-screen">
-    <div class="setup-title">Chi sei tu?</div>
+    <div class="setup-title">Di chi è questo telefono?</div>
     <p class="setup-sub">Solo su questo telefono — lo ricorderà.</p>
     <div class="who-choice">
       <button class="who-btn" id="who-a"></button>
@@ -789,8 +789,8 @@ const db = getDatabase(fbApp);
   });
 
   function showWhoAmI(){
-    $('who-a').textContent = 'Sono ' + setup.nameA;
-    $('who-b').textContent = 'Sono ' + setup.nameB;
+    $('who-a').textContent = setup.nameA;
+    $('who-b').textContent = setup.nameB;
     $('whoami-screen').classList.add('active');
   }
   $('who-a').addEventListener('click', () => pickRole('a'));
