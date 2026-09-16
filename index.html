@@ -188,7 +188,7 @@
   }
 
   /* ---------- Setup ---------- */
-  #setup-screen, #whoami-screen{
+  #room-screen, #setup-screen, #whoami-screen{
     display:none;
     flex:1;
     min-height:0;
@@ -200,7 +200,7 @@
     z-index:2;
     overflow-y:auto;
   }
-  #setup-screen.active, #whoami-screen.active{display:flex;}
+  #room-screen.active, #setup-screen.active, #whoami-screen.active{display:flex;}
   .setup-title{
     font-family:'Fraunces', serif;
     font-optical-sizing:auto;
@@ -272,6 +272,46 @@
     transition:transform 0.12s ease, border-color 0.15s ease;
   }
   .who-btn:active{border-color:var(--accent-amber); transform:scale(0.98);}
+  .room-code-display{
+    font-family:'Fraunces', serif;
+    font-optical-sizing:auto;
+    font-size:32px;
+    font-weight:600;
+    letter-spacing:0.14em;
+    text-align:center;
+    background:linear-gradient(160deg, var(--bg-panel-soft), var(--bg-panel));
+    border:1px solid var(--line);
+    border-radius:var(--radius-md);
+    padding:20px 10px;
+    margin:10px 0 16px;
+    color:var(--accent-amber-light);
+    box-shadow:var(--shadow-soft);
+    cursor:pointer;
+    transition:transform 0.12s ease;
+  }
+  .room-code-display:active{transform:scale(0.98);}
+  .menu-room-code{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    background:rgba(0,0,0,0.16);
+    border:1px solid var(--line-soft);
+    border-radius:9px;
+    padding:10px 12px;
+    margin-bottom:6px;
+    font-family:'Fraunces', serif;
+    font-size:15px;
+    letter-spacing:0.08em;
+    color:var(--accent-amber-light);
+    cursor:pointer;
+  }
+  .menu-room-code span{
+    font-family:'Inter', sans-serif;
+    font-size:11px;
+    letter-spacing:normal;
+    color:var(--text-muted);
+  }
 
   /* ---------- Disegna tab ---------- */
   .draw-block{margin-top:16px;}
@@ -589,6 +629,30 @@
 <div id="app">
   <div id="hearts-bg"></div>
 
+  <!-- ROOM CODE: keeps this app usable by multiple couples without seeing each other's data -->
+  <div id="room-screen">
+    <div class="setup-title">Prima di tutto</div>
+    <p class="setup-sub">Questa app può essere usata da più coppie: un codice segreto tiene i vostri dati separati da quelli di chiunque altro.</p>
+
+    <div class="who-choice" id="room-choice">
+      <button class="who-btn" id="room-create-btn">Crea un codice nuovo</button>
+      <button class="who-btn" id="room-join-btn">Ho già un codice</button>
+    </div>
+
+    <div id="room-create-box" style="display:none">
+      <p class="setup-sub" style="margin-bottom:6px">Il vostro codice:</p>
+      <div class="room-code-display" id="room-code-display">------</div>
+      <p class="setup-sub">Tocca il codice per copiarlo, poi mandalo a chi vuoi far entrare — senza, nessun altro vede i vostri dati.</p>
+      <button class="btn-primary" id="room-create-continue">Continua</button>
+    </div>
+
+    <div id="room-join-box" style="display:none">
+      <label class="field-label">Inserisci il codice ricevuto</label>
+      <input type="text" id="room-join-input" placeholder="Es. AB12CD" maxlength="8" style="text-transform:uppercase">
+      <button class="btn-primary" id="room-join-continue">Entra</button>
+    </div>
+  </div>
+
   <!-- SETUP: create couple profile -->
   <div id="setup-screen">
     <div class="setup-title">Prima di tutto</div>
@@ -624,7 +688,9 @@
       </button>
     </div>
     <div class="menu-panel" id="menu-panel">
+      <div class="menu-room-code" id="menu-room-code"></div>
       <button class="reset-link" id="reset-role">Cambia il mio ruolo su questo telefono</button>
+      <button class="reset-link" id="reset-room">Esci da questa stanza (cambia codice)</button>
       <button class="reset-link danger" id="reset-all">Ricomincia da zero (cancella tutto)</button>
     </div>
     <div class="tab-row" id="tab-row">
@@ -722,6 +788,7 @@ const db = getDatabase(fbApp);
   const COLORS = ['#F7ECE4','#F2984B','#E8A0A0','#8FB39E','#7B9BC7'];
   let myRole = null;      // 'a' or 'b'
   let setup = null;       // {nameA, nameB, startDate}
+  let roomCode = null;    // the shared secret that scopes this couple's data
   let currentColor = COLORS[0];
   let drawing = false;
   let lastX = 0, lastY = 0;
@@ -730,10 +797,17 @@ const db = getDatabase(fbApp);
 
   const $ = (id) => document.getElementById(id);
 
-  // shared=true  -> synced between both phones, via Firebase Realtime Database
+  function generateRoomCode(){
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I, easy to read aloud
+    let code = '';
+    for(let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+  }
+
+  // shared=true  -> synced between both phones, via Firebase Realtime Database (scoped to this room's code)
   // shared=false -> only on this device, via localStorage
   function firebaseKey(key){
-    return 'couple/' + key.replace(/:/g, '/');
+    return 'rooms/' + roomCode + '/' + key.replace(/:/g, '/');
   }
   async function safeGet(key, shared){
     if(!shared){
@@ -761,6 +835,13 @@ const db = getDatabase(fbApp);
 
   // ---------- Boot ----------
   async function boot(){
+    const savedRoom = localStorage.getItem('couple:room');
+    if(!savedRoom){
+      $('room-screen').classList.add('active');
+      return;
+    }
+    roomCode = savedRoom;
+
     const setupRaw = await safeGet('couple:setup', true);
     if(!setupRaw){
       $('setup-screen').classList.add('active');
@@ -776,6 +857,37 @@ const db = getDatabase(fbApp);
     myRole = localRole;
     startApp();
   }
+
+  // ---------- Room code flow ----------
+  function enterRoom(code){
+    roomCode = code;
+    localStorage.setItem('couple:room', code);
+    $('room-screen').classList.remove('active');
+    boot();
+  }
+  $('room-create-btn').addEventListener('click', () => {
+    const code = generateRoomCode();
+    $('room-code-display').textContent = code;
+    $('room-code-display').dataset.code = code;
+    $('room-choice').style.display = 'none';
+    $('room-create-box').style.display = 'block';
+  });
+  $('room-code-display').addEventListener('click', () => {
+    const code = $('room-code-display').dataset.code;
+    if(code && navigator.clipboard) navigator.clipboard.writeText(code).catch(() => {});
+  });
+  $('room-create-continue').addEventListener('click', () => {
+    enterRoom($('room-code-display').dataset.code);
+  });
+  $('room-join-btn').addEventListener('click', () => {
+    $('room-choice').style.display = 'none';
+    $('room-join-box').style.display = 'block';
+  });
+  $('room-join-continue').addEventListener('click', () => {
+    const code = $('room-join-input').value.trim().toUpperCase();
+    if(!code) return;
+    enterRoom(code);
+  });
 
   // ---------- Setup flow ----------
   $('setup-save').addEventListener('click', async () => {
@@ -813,6 +925,11 @@ const db = getDatabase(fbApp);
     $('header-sub').textContent = 'la vostra app';
     $('send-drawing').textContent = 'Invia a ' + partnerName();
     $('screen-draw').classList.add('active');
+
+    $('menu-room-code').innerHTML = roomCode + ' <span>tocca per copiare</span>';
+    $('menu-room-code').addEventListener('click', () => {
+      if(navigator.clipboard) navigator.clipboard.writeText(roomCode).catch(() => {});
+    });
 
     setupCanvas();
     buildSwatches();
@@ -1040,6 +1157,16 @@ const db = getDatabase(fbApp);
       'Tocca di nuovo per confermare',
       async () => {
         await safeDelete('couple:myrole', false);
+        location.reload();
+      }
+    );
+    armButton(
+      $('reset-room'),
+      'Esci da questa stanza (cambia codice)',
+      'Il telefono dimentica il codice: tocca di nuovo',
+      async () => {
+        localStorage.removeItem('couple:room');
+        localStorage.removeItem('couple:myrole');
         location.reload();
       }
     );
